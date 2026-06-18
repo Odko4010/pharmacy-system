@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id               String           @id @default(cuid())
+  email            String           @unique
+  password         String
+  firstName        String
+  lastName         String
+  phone            String?
+  role             Role             @default(EMPLOYEE)
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  sales            SaleTransaction[]
+  stockMovements   StockMovement[]
+  ordersCreated    Order[]
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  medicines   Medicine[]
+  createdAt   DateTime   @default(now())
+}
+
+model Manufacturer {
+  id        String     @id @default(cuid())
+  name      String
+  country   String?
+  medicines Medicine[]
+  createdAt DateTime   @default(now())
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  address   String?
+  orders    Order[]
+  createdAt DateTime @default(now())
+}
+
+model Medicine {
+  id                   String          @id @default(cuid())
+  name                 String
+  genericName          String?
+  barcode              String?         @unique
+  description          String?
+  dosageForm           String?
+  strength             String?
+  unit                 String          @default("ширхэг")
+  purchasePrice        Decimal
+  sellingPrice         Decimal
+  minStockLevel        Int             @default(10)
+  requiresPrescription Boolean         @default(false)
+  isActive             Boolean         @default(true)
+  categoryId           String?
+  manufacturerId       String?
+  category             Category?       @relation(fields: [categoryId], references: [id])
+  manufacturer         Manufacturer?   @relation(fields: [manufacturerId], references: [id])
+  batches              Batch[]
+  saleItems            SaleItem[]
+  orderItems           OrderItem[]
+  stockMovements       StockMovement[]
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+}
+
+model Batch {
+  id           String     @id @default(cuid())
+  medicineId   String
+  medicine     Medicine   @relation(fields: [medicineId], references: [id])
+  batchNumber  String
+  quantity     Int
+  expiryDate   DateTime
+  receivedDate DateTime   @default(now())
+  saleItems    SaleItem[]
+  createdAt    DateTime   @default(now())
+}
+
+model SaleTransaction {
+  id          String     @id @default(cuid())
+  totalAmount Decimal
+  soldById    String
+  soldBy      User       @relation(fields: [soldById], references: [id])
+  items       SaleItem[]
+  createdAt   DateTime   @default(now())
+}
+
+model SaleItem {
+  id          String          @id @default(cuid())
+  saleId      String
+  sale        SaleTransaction @relation(fields: [saleId], references: [id])
+  medicineId  String
+  medicine    Medicine        @relation(fields: [medicineId], references: [id])
+  batchId     String?
+  batch       Batch?          @relation(fields: [batchId], references: [id])
+  quantity    Int
+  unitPrice   Decimal
+  subtotal    Decimal
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  orderNumber  String      @unique
+  supplierId   String?
+  supplier     Supplier?   @relation(fields: [supplierId], references: [id])
+  createdById  String?
+  createdBy    User?       @relation(fields: [createdById], references: [id])
+  totalAmount  Decimal?
+  status       OrderStatus @default(PENDING)
+  notes        String?
+  receivedDate DateTime?
+  items        OrderItem[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id])
+  medicineId String
+  medicine   Medicine @relation(fields: [medicineId], references: [id])
+  quantity   Int
+  unitPrice  Decimal
+}
+
+model StockMovement {
+  id         String        @id @default(cuid())
+  medicineId String
+  medicine   Medicine      @relation(fields: [medicineId], references: [id])
+  type       MovementType
+  quantity   Int
+  reason     String?
+  movedById  String
+  movedBy    User          @relation(fields: [movedById], references: [id])
+  createdAt  DateTime      @default(now())
+}
+
+enum Role {
+  ADMIN
+  EMPLOYEE
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  RECEIVED
+  CANCELLED
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}

@@ -1,0 +1,69 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { LayoutDashboard, Pill, ShoppingCart, Receipt, Boxes, Users, Tag, Truck } from "lucide-react";
+import clsx from "clsx";
+
+const navItems = [
+  { href: "/dashboard", label: "Нүүр хуудас", icon: LayoutDashboard },
+  { href: "/dashboard/medicines", label: "Эмийн жагсаалт", icon: Pill },
+  { href: "/dashboard/sales", label: "Борлуулалт", icon: Receipt },
+  { href: "/dashboard/orders", label: "Захиалга", icon: ShoppingCart },
+  { href: "/dashboard/inventory", label: "Нөөц", icon: Boxes },
+  { href: "/dashboard/categories", label: "Ангилал", icon: Tag },
+  { href: "/dashboard/users", label: "Хэрэглэгчид", icon: Users, adminOnly: true },
+];
+
+export function Sidebar({ role }: { role: "ADMIN" | "EMPLOYEE" }) {
+  const pathname = usePathname();
+
+  return (
+    <aside className="hidden md:flex md:flex-col w-60 shrink-0 min-h-screen sticky top-0"
+      style={{ background: "#0f1f3d", borderRight: "1px solid rgba(255,255,255,0.06)" }}>
+      
+      <div className="flex items-center gap-3 px-5 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="flex items-center justify-center size-9 rounded-xl" style={{ background: "rgba(255,255,255,0.12)" }}>
+          <Pill className="size-5 text-white" />
+        </div>
+        <div>
+          <p className="text-base font-bold text-white leading-none">ЭмСан</p>
+          <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.4)" }}>Буртгэлийн систем</p>
+        </div>
+      </div>
+
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+        <p className="text-[10px] font-semibold uppercase tracking-wider px-3 mb-2" style={{ color: "rgba(255,255,255,0.3)" }}>
+          Цэс
+        </p>
+        {navItems
+          .filter((item) => !item.adminOnly || role === "ADMIN")
+          .map((item) => {
+            const isActive = item.href === "/dashboard" ? pathname === item.href : pathname.startsWith(item.href);
+            const Icon = item.icon;
+            return (
+              <Link key={item.href} href={item.href}
+                className={clsx(
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150",
+                  isActive
+                    ? "text-white"
+                    : "hover:text-white"
+                )}
+                style={isActive
+                  ? { background: "rgba(255,255,255,0.12)", color: "white" }
+                  : { color: "rgba(255,255,255,0.55)" }
+                }
+              >
+                <Icon className="size-[17px] shrink-0" />
+                {item.label}
+              </Link>
+            );
+          })}
+      </nav>
+
+      <div className="px-5 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+        <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>Хувилбар 1.0</p>
+      </div>
+    </aside>
+  );
+}
