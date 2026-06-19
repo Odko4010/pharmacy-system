@@ -1,6 +1,6 @@
-﻿generator client {
-  provider = "prisma-client-js"
-  
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -58,7 +58,7 @@ model Medicine {
   description          String?
   dosageForm           String?
   strength             String?
-  unit                 String          @default("ширхэг")
+  unit                 String          @default("??????")
   purchasePrice        Decimal
   sellingPrice         Decimal
   minStockLevel        Int             @default(10)
@@ -165,3 +165,4 @@ enum MovementType {
   OUT
   ADJUSTMENT
 }
+
