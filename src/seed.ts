@@ -1,25 +1,24 @@
-import { PrismaClient } from './generated/prisma/client'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import * as dotenv from 'dotenv'
+
 dotenv.config()
 
-console.log('DATABASE_URL:', process.env.DATABASE_URL)
-
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
-const prisma = new PrismaClient({ adapter })
+const prisma = new PrismaClient()
 
 async function main() {
   const hashedPassword = await bcrypt.hash('admin123', 10)
+  
   const user = await prisma.user.create({
     data: {
-      email: 'Odko4010@gmail.com',
-      password: hashedPassword,
+      email: 'Admin1@gmail.com',
+      password: 'Admin123',
       firstName: 'Админ',
       lastName: 'Систем',
       role: 'ADMIN',
     },
   })
+  
   console.log('Admin үүсгэгдлээ:', user.email)
 }
 
