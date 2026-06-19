@@ -1,200 +1,203 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { TrendingUp, Pill, AlertTriangle, Clock, ShoppingCart, ArrowRight, Package } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { useCallback, useEffect, useState } from "react";
+import { Plus, Search, Pencil, Trash2, Pill } from "lucide-react";
+import { MedicineFormModal } from "./Medicineformmodal";
 
-interface DashboardData {
-  todaySalesAmount: number;
-  todaySalesCount: number;
-  totalMedicines: number;
-  lowStockCount: number;
-  expiringSoonCount: number;
-  pendingOrdersCount: number;
-  salesChart: { date: string; amount: number }[];
+interface Medicine {
+  id: string;
+  name: string;
+  genericName: string | null;
+  unit: string;
+  dosageForm: string | null;
+  strength: string | null;
+  purchasePrice: string;
+  sellingPrice: string;
+  minStockLevel: number;
+  totalStock: number;
+  requiresPrescription: boolean;
+  category: { id: string; name: string } | null;
+  manufacturer: { id: string; name: string } | null;
 }
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("mn-MN").format(value) + "₮";
+function formatCurrency(value: string | number) {
+  return new Intl.NumberFormat("mn-MN").format(Number(value)) + "₮";
 }
 
-function formatChartDate(dateStr: string) {
-  const d = new Date(dateStr);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
-
-const stats = (data: DashboardData) => [
-  {
-    label: "Өнөөдрийн борлуулалт",
-    value: formatCurrency(data.todaySalesAmount),
-    sub: `${data.todaySalesCount} гүйлгээ`,
-    icon: TrendingUp,
-    iconBg: "#eff6ff",
-    iconColor: "#1d4ed8",
-    border: "#bfdbfe",
-  },
-  {
-    label: "Нийт эмийн төрөл",
-    value: String(data.totalMedicines),
-    sub: "идэвхтэй бүртгэлтэй",
-    icon: Pill,
-    iconBg: "#f0fdf4",
-    iconColor: "#16a34a",
-    border: "#bbf7d0",
-  },
-  {
-    label: "Бага нөөцтэй",
-    value: String(data.lowStockCount),
-    sub: "анхаарал шаардлагатай",
-    icon: AlertTriangle,
-    iconBg: "#fffbeb",
-    iconColor: "#d97706",
-    border: "#fde68a",
-    href: "/dashboard/inventory?filter=low-stock",
-  },
-  {
-    label: "Хугацаа дуусах гэж буй",
-    value: String(data.expiringSoonCount),
-    sub: "дараагийн 30 хоногт",
-    icon: Clock,
-    iconBg: "#fef2f2",
-    iconColor: "#dc2626",
-    border: "#fecaca",
-    href: "/dashboard/inventory?filter=expiring",
-  },
-];
-
-export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
+export default function MedicinesPage() {
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  const loadMedicines = useCallback(async () => {
+    setIsLoading(true);
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    const res = await fetch(`/api/medicines?${params}`);
+    const data = await res.json();
+    setMedicines(data);
+    setIsLoading(false);
+  }, [search]);
 
   useEffect(() => {
-    fetch("/api/reports/dashboard")
-      .then((res) => res.json())
-      .then((json) => { setData(json); setIsLoading(false); });
-  }, []);
+    const timer = setTimeout(loadMedicines, 300);
+    return () => clearTimeout(timer);
+  }, [loadMedicines]);
 
-  if (isLoading || !data) {
-    return (
-      <div className="p-6 space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-28 rounded-2xl animate-pulse" style={{ background: "#f1f5f9" }} />
-          ))}
-        </div>
-      </div>
-    );
+  async function handleDelete(id: string) {
+    try {
+      await fetch(`/api/medicines/${id}`, { method: "DELETE" });
+      loadMedicines();
+    } finally {
+      setDeleteConfirmId(null);
+    }
   }
 
   return (
-    <div className="p-6 space-y-6" style={{ background: "#f8fafc", minHeight: "100vh" }}>
-
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats(data).map((stat) => {
-          const Icon = stat.icon;
-          const card = (
-            <div className="rounded-2xl p-5 transition-all duration-150 hover:-translate-y-0.5"
-              style={{ background: "white", border: `1px solid ${stat.border}`, boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-medium mb-3" style={{ color: "#94a3b8" }}>{stat.label}</p>
-                  <p className="text-2xl font-bold" style={{ color: "#0f172a" }}>{stat.value}</p>
-                  <p className="text-xs mt-1" style={{ color: "#94a3b8" }}>{stat.sub}</p>
-                </div>
-                <div className="flex items-center justify-center size-10 rounded-xl"
-                  style={{ background: stat.iconBg }}>
-                  <Icon className="size-5" style={{ color: stat.iconColor }} />
-                </div>
-              </div>
-            </div>
-          );
-          return stat.href ? (
-            <Link key={stat.label} href={stat.href}>{card}</Link>
-          ) : (
-            <div key={stat.label}>{card}</div>
-          );
-        })}
-      </div>
-
-      {/* Chart + Quick actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-        {/* Chart */}
-        <div className="lg:col-span-2 rounded-2xl p-5"
-          style={{ background: "white", border: "1px solid #f1f5f9", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h3 className="text-sm font-semibold" style={{ color: "#0f172a" }}>Сүүлийн 7 хоногийн борлуулалт</h3>
-              <p className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>Өдөр тутмын орлого</p>
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={data.salesChart} barSize={32}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="date" tickFormatter={formatChartDate}
-                tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} width={40} />
-              <Tooltip
-                formatter={(value) => [formatCurrency(Number(value ?? 0)), "Борлуулалт"]}
-                labelFormatter={(label) => formatChartDate(label)}
-                contentStyle={{ borderRadius: 10, border: "1px solid #f1f5f9", fontSize: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
-              />
-              <Bar dataKey="amount" fill="#1d4ed8" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+    <div className="p-6 space-y-5" style={{ background: "#f8fafc", minHeight: "100vh" }}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold" style={{ color: "#0f172a" }}>Эмийн жагсаалт</h2>
+          <p className="text-sm mt-0.5" style={{ color: "#94a3b8" }}>Нийт {medicines.length} эм бүртгэлтэй</p>
         </div>
-
-        {/* Quick actions */}
-        <div className="rounded-2xl p-5"
-          style={{ background: "white", border: "1px solid #f1f5f9", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-          <h3 className="text-sm font-semibold mb-1" style={{ color: "#0f172a" }}>Шуурхай үйлдэл</h3>
-          <p className="text-xs mb-4" style={{ color: "#94a3b8" }}>Түгээмэл үйлдлүүд</p>
-
-          <div className="space-y-2">
-            {[
-              { href: "/dashboard/sales/new", label: "Шинэ борлуулалт хийх", icon: ShoppingCart, color: "#1d4ed8", bg: "#eff6ff" },
-              { href: "/dashboard/medicines/new", label: "Шинэ эм бүртгэх", icon: Pill, color: "#16a34a", bg: "#f0fdf4" },
-              { href: "/dashboard/orders/new", label: "Захиалга үүсгэх", icon: Package, color: "#d97706", bg: "#fffbeb" },
-            ].map((action) => {
-              const Icon = action.icon;
-              return (
-                <Link key={action.href} href={action.href}
-                  className="flex items-center justify-between rounded-xl px-4 py-3 transition-all duration-150 group"
-                  style={{ border: "1px solid #f1f5f9" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center size-8 rounded-lg"
-                      style={{ background: action.bg }}>
-                      <Icon className="size-4" style={{ color: action.color }} />
-                    </div>
-                    <span className="text-sm font-medium" style={{ color: "#0f172a" }}>{action.label}</span>
-                  </div>
-                  <ArrowRight className="size-4" style={{ color: "#cbd5e1" }} />
-                </Link>
-              );
-            })}
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4" style={{ color: "#94a3b8" }} />
+            <input
+              placeholder="Эм хайх..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 pr-4 py-2 rounded-xl text-sm outline-none w-56"
+              style={{ background: "white", border: "1px solid #f1f5f9", color: "#0f172a" }}
+            />
           </div>
-
-          {data.pendingOrdersCount > 0 && (
-            <div className="mt-4 pt-4" style={{ borderTop: "1px solid #f1f5f9" }}>
-              <Link href="/dashboard/orders?status=PENDING"
-                className="flex items-center justify-between rounded-xl px-4 py-3"
-                style={{ background: "#fffbeb", border: "1px solid #fde68a" }}>
-                <span className="text-sm font-medium" style={{ color: "#92400e" }}>
-                  Хүлээгдэж буй захиалга
-                </span>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: "#d97706", color: "white" }}>
-                  {data.pendingOrdersCount}
-                </span>
-              </Link>
-            </div>
-          )}
+          <button onClick={() => { setEditingMedicine(null); setIsModalOpen(true); }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white"
+            style={{ background: "#1d4ed8" }}>
+            <Plus className="size-4" />
+            Шинэ эм
+          </button>
         </div>
       </div>
+
+      <div className="rounded-2xl overflow-hidden" style={{ background: "white", border: "1px solid #f1f5f9" }}>
+        {isLoading ? (
+          <div className="p-8 space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: "#f1f5f9" }} />
+            ))}
+          </div>
+        ) : medicines.length === 0 ? (
+          <div className="p-16 text-center">
+            <div className="flex items-center justify-center size-14 rounded-2xl mx-auto mb-4" style={{ background: "#f0fdf4" }}>
+              <Pill className="size-7" style={{ color: "#16a34a" }} />
+            </div>
+            <p className="font-medium" style={{ color: "#0f172a" }}>
+              {search ? "Хайлтад тохирох эм олдсонгүй" : "Эм бүртгэгдээгүй байна"}
+            </p>
+            <p className="text-sm mt-1 mb-5" style={{ color: "#94a3b8" }}>Анхны эмээ бүртгэнэ үү</p>
+            {!search && (
+              <button onClick={() => setIsModalOpen(true)}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: "#1d4ed8" }}>
+                Эм нэмэх
+              </button>
+            )}
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
+                {["Эмийн нэр", "Ангилал", "Зарах үнэ", "Нөөц", "Төлөв", ""].map(h => (
+                  <th key={h} className="text-left px-5 py-3 font-medium" style={{ color: "#64748b" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {medicines.map((med) => {
+                const isLow = med.totalStock <= med.minStockLevel;
+                return (
+                  <tr key={med.id} style={{ borderBottom: "1px solid #f8fafc" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                    <td className="px-5 py-3.5">
+                      <p className="font-medium" style={{ color: "#0f172a" }}>{med.name}</p>
+                      <p className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>
+                        {[med.strength, med.dosageForm].filter(Boolean).join(" · ") || "—"}
+                      </p>
+                    </td>
+                    <td className="px-5 py-3.5 text-sm" style={{ color: "#64748b" }}>{med.category?.name || "—"}</td>
+                    <td className="px-5 py-3.5 font-medium" style={{ color: "#1d4ed8" }}>{formatCurrency(med.sellingPrice)}</td>
+                    <td className="px-5 py-3.5" style={{ color: "#0f172a" }}>{med.totalStock} {med.unit}</td>
+                    <td className="px-5 py-3.5">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                        style={isLow
+                          ? { background: "#fffbeb", color: "#d97706" }
+                          : { background: "#f0fdf4", color: "#16a34a" }}>
+                        <span className="size-1.5 rounded-full"
+                          style={{ background: isLow ? "#f59e0b" : "#22c55e" }} />
+                        {isLow ? "Бага нөөц" : "Хэвийн"}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => { setEditingMedicine(med); setIsModalOpen(true); }}
+                          className="p-1.5 rounded-lg transition-all"
+                          style={{ color: "#94a3b8" }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "#eff6ff"; e.currentTarget.style.color = "#1d4ed8"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94a3b8"; }}>
+                          <Pencil className="size-4" />
+                        </button>
+                        {deleteConfirmId === med.id ? (
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => handleDelete(med.id)}
+                              className="text-xs px-2 py-1 rounded-lg text-white" style={{ background: "#dc2626" }}>
+                              Устгах
+                            </button>
+                            <button onClick={() => setDeleteConfirmId(null)}
+                              className="text-xs px-2 py-1 rounded-lg" style={{ background: "#f1f5f9", color: "#64748b" }}>
+                              Болих
+                            </button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setDeleteConfirmId(med.id)}
+                            className="p-1.5 rounded-lg transition-all"
+                            style={{ color: "#94a3b8" }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "#fef2f2"; e.currentTarget.style.color = "#dc2626"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94a3b8"; }}>
+                            <Trash2 className="size-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <MedicineFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={loadMedicines}
+        initialData={editingMedicine ? {
+          id: editingMedicine.id,
+          name: editingMedicine.name,
+          genericName: editingMedicine.genericName || undefined,
+          unit: editingMedicine.unit,
+          dosageForm: editingMedicine.dosageForm || undefined,
+          strength: editingMedicine.strength || undefined,
+          purchasePrice: Number(editingMedicine.purchasePrice),
+          sellingPrice: Number(editingMedicine.sellingPrice),
+          minStockLevel: editingMedicine.minStockLevel,
+          requiresPrescription: editingMedicine.requiresPrescription,
+          categoryId: editingMedicine.category?.id,
+        } : null}
+      />
     </div>
   );
 }

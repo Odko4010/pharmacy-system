@@ -47,7 +47,7 @@ export async function GET() {
     const pendingOrdersCount = await prisma.order.count({
       where: { status: { in: ["PENDING", "CONFIRMED"] } },
     });
-
+    
     // Сарын борлуулалтын график (сүүлийн 7 хоног)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
@@ -71,7 +71,24 @@ export async function GET() {
         salesByDay[key] += Number(sale.totalAmount);
       }
     });
+    // Сүүлийн 7 хоногт хамгийн их зарагдсан эмүүд
+const topMedicinesRaw = await prisma.saleItem.groupBy({
+  by: ["medicineId"],
+  where: { sale: { createdAt: { gte: sevenDaysAgo } } },
+  _sum: { quantity: true },
+  orderBy: { _sum: { quantity: "desc" } },
+  take: 5,
+});
 
+const topMedicines = await Promise.all(
+  topMedicinesRaw.map(async (item: typeof topMedicinesRaw[number]) => {
+    const med = await prisma.medicine.findUnique({
+      where: { id: item.medicineId },
+      select: { name: true },
+    });
+    return { name: med?.name || "—", quantity: item._sum.quantity || 0 };
+  })
+);
     return NextResponse.json({
       todaySalesAmount: Number(todaySales._sum.totalAmount || 0),
       todaySalesCount: todaySales._count,
@@ -80,6 +97,7 @@ export async function GET() {
       expiringSoonCount,
       pendingOrdersCount,
       salesChart: Object.entries(salesByDay).map(([date, amount]) => ({ date, amount })),
+      topMedicines,
     });
   } catch (err) {
     return handleApiError(err);

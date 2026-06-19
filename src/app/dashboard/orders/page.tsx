@@ -3,18 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, ShoppingCart } from "lucide-react";
-import { Card, Badge } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 interface OrderListItem {
   id: string;
   orderNumber: string;
   status: "PENDING" | "CONFIRMED" | "RECEIVED" | "CANCELLED";
   totalAmount: string;
-  orderDate: string;
-  supplier: { name: string };
-  createdBy: { firstName: string; lastName: string };
-  items: { quantity: number; medicine: { name: string; unit: string } }[];
+  createdAt: string;
+  supplier: { name: string } | null;
 }
 
 function formatCurrency(value: string) {
@@ -22,98 +18,118 @@ function formatCurrency(value: string) {
 }
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString("mn-MN", { year: "numeric", month: "2-digit", day: "2-digit" });
+  return new Date(value).toLocaleDateString("mn-MN", { month: "2-digit", day: "2-digit", year: "numeric" });
 }
 
-const statusConfig: Record<string, { label: string; variant: "neutral" | "warning" | "success" | "danger" }> = {
-  PENDING: { label: "Хүлээгдэж байна", variant: "warning" },
-  CONFIRMED: { label: "Баталгаажсан", variant: "brand" as "neutral" },
-  RECEIVED: { label: "Хүлээж авсан", variant: "success" },
-  CANCELLED: { label: "Цуцлагдсан", variant: "danger" },
+const statusConfig = {
+  PENDING:   { label: "Хүлээгдэж байна", bg: "#fffbeb", color: "#d97706", dot: "#f59e0b" },
+  CONFIRMED: { label: "Баталгаажсан",    bg: "#eff6ff", color: "#1d4ed8", dot: "#3b82f6" },
+  RECEIVED:  { label: "Хүлээж авсан",   bg: "#f0fdf4", color: "#16a34a", dot: "#22c55e" },
+  CANCELLED: { label: "Цуцлагдсан",     bg: "#fef2f2", color: "#dc2626", dot: "#ef4444" },
 };
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [filter, setFilter] = useState("ALL");
 
   useEffect(() => {
-    fetch("/api/orders")
-      .then((r) => r.json())
-      .then((data) => {
-        setOrders(data);
-        setIsLoading(false);
-      });
+    fetch("/api/orders").then((r) => r.json()).then((data) => { setOrders(data); setIsLoading(false); });
   }, []);
 
+  const filtered = filter === "ALL" ? orders : orders.filter(o => o.status === filter);
+
   return (
-    <div className="space-y-4">
+    <div className="p-6 space-y-5" style={{ background: "#f8fafc", minHeight: "100vh" }}>
       <div className="flex items-center justify-between">
-        <p className="text-sm text-[var(--color-ink-500)]">Нийт {orders.length} захиалга</p>
+        <div>
+          <h2 className="text-lg font-semibold" style={{ color: "#0f172a" }}>Захиалга</h2>
+          <p className="text-sm mt-0.5" style={{ color: "#94a3b8" }}>Нийт {orders.length} захиалга</p>
+        </div>
         <Link href="/dashboard/orders/new">
-          <Button>
+          <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white"
+            style={{ background: "#1d4ed8" }}>
             <Plus className="size-4" />
             Шинэ захиалга
-          </Button>
+          </button>
         </Link>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-2">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-16 rounded-xl bg-[var(--color-ink-100)] animate-pulse" />
-          ))}
-        </div>
-      ) : orders.length === 0 ? (
-        <Card>
-          <div className="p-12 text-center">
-            <ShoppingCart className="size-10 text-[var(--color-ink-300)] mx-auto mb-3" />
-            <p className="text-[var(--color-ink-500)] mb-4">Одоогоор захиалга үүсгэгдээгүй байна</p>
+      <div className="flex gap-2">
+        {[["ALL","Бүгд"], ["PENDING","Хүлээгдэж буй"], ["CONFIRMED","Баталгаажсан"], ["RECEIVED","Хүлээж авсан"]].map(([val, label]) => (
+          <button key={val} onClick={() => setFilter(val)}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+            style={filter === val
+              ? { background: "#1d4ed8", color: "white" }
+              : { background: "white", color: "#64748b", border: "1px solid #f1f5f9" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="rounded-2xl overflow-hidden" style={{ background: "white", border: "1px solid #f1f5f9" }}>
+        {isLoading ? (
+          <div className="p-8 space-y-3">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: "#f1f5f9" }} />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="p-16 text-center">
+            <div className="flex items-center justify-center size-14 rounded-2xl mx-auto mb-4" style={{ background: "#eff6ff" }}>
+              <ShoppingCart className="size-7" style={{ color: "#1d4ed8" }} />
+            </div>
+            <p className="font-medium" style={{ color: "#0f172a" }}>Захиалга байхгүй байна</p>
+            <p className="text-sm mt-1 mb-5" style={{ color: "#94a3b8" }}>Анхны захиалгаа үүсгэнэ үү</p>
             <Link href="/dashboard/orders/new">
-              <Button>Анхны захиалга үүсгэх</Button>
+              <button className="px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: "#1d4ed8" }}>
+                Захиалга үүсгэх
+              </button>
             </Link>
           </div>
-        </Card>
-      ) : (
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--color-ink-100)] bg-[var(--color-ink-50)]">
-                  <th className="text-left px-4 py-3 font-medium text-[var(--color-ink-700)]">Дугаар</th>
-                  <th className="text-left px-4 py-3 font-medium text-[var(--color-ink-700)]">Нийлүүлэгч</th>
-                  <th className="text-left px-4 py-3 font-medium text-[var(--color-ink-700)]">Огноо</th>
-                  <th className="text-left px-4 py-3 font-medium text-[var(--color-ink-700)]">Төлөв</th>
-                  <th className="text-right px-4 py-3 font-medium text-[var(--color-ink-700)]">Дүн</th>
-                  <th className="px-4 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((order) => {
-                  const status = statusConfig[order.status];
-                  return (
-                    <tr key={order.id} className="border-b border-[var(--color-ink-100)] last:border-0 hover:bg-[var(--color-ink-50)]/50">
-                      <td className="px-4 py-3 font-mono text-xs text-[var(--color-ink-700)]">{order.orderNumber}</td>
-                      <td className="px-4 py-3 text-[var(--color-ink-900)] font-medium">{order.supplier.name}</td>
-                      <td className="px-4 py-3 text-[var(--color-ink-700)]">{formatDate(order.orderDate)}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant={status.variant}>{status.label}</Badge>
-                      </td>
-                      <td className="px-4 py-3 text-right font-semibold text-[var(--color-ink-900)]">
-                        {formatCurrency(order.totalAmount)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Link href={`/dashboard/orders/${order.id}`} className="text-[var(--color-brand-700)] text-xs font-medium hover:underline">
-                          Дэлгэрэнгүй
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
+                {["Дугаар", "Нийлүүлэгч", "Огноо", "Төлөв", "Дүн", ""].map(h => (
+                  <th key={h} className="text-left px-5 py-3 font-medium" style={{ color: "#64748b" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((order) => {
+                const s = statusConfig[order.status];
+                return (
+                  <tr key={order.id} style={{ borderBottom: "1px solid #f8fafc" }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                    <td className="px-5 py-3.5 font-mono text-xs" style={{ color: "#64748b" }}>{order.orderNumber}</td>
+                    <td className="px-5 py-3.5 font-medium" style={{ color: "#0f172a" }}>{order.supplier?.name || "—"}</td>
+                    <td className="px-5 py-3.5" style={{ color: "#64748b" }}>{formatDate(order.createdAt)}</td>
+                    <td className="px-5 py-3.5">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                        style={{ background: s.bg, color: s.color }}>
+                        <span className="size-1.5 rounded-full" style={{ background: s.dot }} />
+                        {s.label}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 font-semibold" style={{ color: "#1d4ed8" }}>
+                      {order.totalAmount ? formatCurrency(order.totalAmount) : "—"}
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <Link href={`/dashboard/orders/${order.id}`}
+                        className="text-xs font-medium px-3 py-1.5 rounded-lg transition-all"
+                        style={{ background: "#eff6ff", color: "#1d4ed8" }}>
+                        Дэлгэрэнгүй
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }

@@ -21,7 +21,7 @@ export async function GET() {
     category: m.category?.name || null,
     totalStock: m.batches.reduce((sum: number, b: typeof m.batches[number]) => sum + b.quantity, 0),
   }))
-  .sort((a: { totalStock: number }, b: { totalStock: number }) => a.totalStock - b.totalStock);
+  .sort((a: { totalStock: number }, b: { totalStock: number }) => a.totalStock - b.totalStock); 
 
     return NextResponse.json(lowStock);
   } catch (err) {

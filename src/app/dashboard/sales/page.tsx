@@ -2,118 +2,115 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Receipt } from "lucide-react";
-import { Card, Badge } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Plus, Receipt, TrendingUp } from "lucide-react";
 
 interface SaleTransaction {
   id: string;
-  transactionNumber: string;
   totalAmount: string;
-  customerName: string | null;
-  paymentMethod: string;
   createdAt: string;
   soldBy: { firstName: string; lastName: string };
   items: { quantity: number; medicine: { name: string; unit: string } }[];
 }
 
-function formatCurrency(value: string) {
+function formatCurrency(value: string | number) {
   return new Intl.NumberFormat("mn-MN").format(Number(value)) + "₮";
 }
 
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString("mn-MN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
+    month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
   });
 }
-
-const paymentLabels: Record<string, string> = {
-  CASH: "Бэлэн мөнгө",
-  CARD: "Карт",
-  TRANSFER: "Шилжүүлэг",
-};
 
 export default function SalesPage() {
   const [sales, setSales] = useState<SaleTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/sales")
-      .then((r) => r.json())
-      .then((data) => {
-        setSales(data);
-        setIsLoading(false);
-      });
+    fetch("/api/sales").then((r) => r.json()).then((data) => { setSales(data); setIsLoading(false); });
   }, []);
 
+  const totalToday = sales
+    .filter(s => new Date(s.createdAt).toDateString() === new Date().toDateString())
+    .reduce((sum, s) => sum + Number(s.totalAmount), 0);
+
   return (
-    <div className="space-y-4">
+    <div className="p-6 space-y-5" style={{ background: "#f8fafc", minHeight: "100vh" }}>
       <div className="flex items-center justify-between">
-        <p className="text-sm text-[var(--color-ink-500)]">Нийт {sales.length} гүйлгээ бүртгэгдсэн</p>
+        <div>
+          <h2 className="text-lg font-semibold" style={{ color: "#0f172a" }}>Борлуулалт</h2>
+          <p className="text-sm mt-0.5" style={{ color: "#94a3b8" }}>Нийт {sales.length} бүртгэл</p>
+        </div>
         <Link href="/dashboard/sales/new">
-          <Button>
+          <button className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all"
+            style={{ background: "#1d4ed8" }}>
             <Plus className="size-4" />
             Шинэ борлуулалт
-          </Button>
+          </button>
         </Link>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-2">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-16 rounded-xl bg-[var(--color-ink-100)] animate-pulse" />
-          ))}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-2xl p-4" style={{ background: "white", border: "1px solid #bfdbfe" }}>
+          <p className="text-xs" style={{ color: "#94a3b8" }}>Өнөөдрийн борлуулалт</p>
+          <p className="text-xl font-bold mt-1" style={{ color: "#0f172a" }}>{formatCurrency(totalToday)}</p>
         </div>
-      ) : sales.length === 0 ? (
-        <Card>
-          <div className="p-12 text-center">
-            <Receipt className="size-10 text-[var(--color-ink-300)] mx-auto mb-3" />
-            <p className="text-[var(--color-ink-500)] mb-4">Одоогоор борлуулалт бүртгэгдээгүй байна</p>
+        <div className="rounded-2xl p-4" style={{ background: "white", border: "1px solid #bbf7d0" }}>
+          <p className="text-xs" style={{ color: "#94a3b8" }}>Нийт гүйлгээ</p>
+          <p className="text-xl font-bold mt-1" style={{ color: "#0f172a" }}>{sales.length}</p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl overflow-hidden" style={{ background: "white", border: "1px solid #f1f5f9" }}>
+        {isLoading ? (
+          <div className="p-8 space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: "#f1f5f9" }} />
+            ))}
+          </div>
+        ) : sales.length === 0 ? (
+          <div className="p-16 text-center">
+            <div className="flex items-center justify-center size-14 rounded-2xl mx-auto mb-4" style={{ background: "#eff6ff" }}>
+              <Receipt className="size-7" style={{ color: "#1d4ed8" }} />
+            </div>
+            <p className="font-medium" style={{ color: "#0f172a" }}>Борлуулалт байхгүй байна</p>
+            <p className="text-sm mt-1 mb-5" style={{ color: "#94a3b8" }}>Анхны борлуулалтаа бүртгэнэ үү</p>
             <Link href="/dashboard/sales/new">
-              <Button>Анхны борлуулалт хийх</Button>
+              <button className="px-4 py-2 rounded-xl text-sm font-medium text-white" style={{ background: "#1d4ed8" }}>
+                Борлуулалт хийх
+              </button>
             </Link>
           </div>
-        </Card>
-      ) : (
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--color-ink-100)] bg-[var(--color-ink-50)]">
-                  <th className="text-left px-4 py-3 font-medium text-[var(--color-ink-700)]">Дугаар</th>
-                  <th className="text-left px-4 py-3 font-medium text-[var(--color-ink-700)]">Огноо</th>
-                  <th className="text-left px-4 py-3 font-medium text-[var(--color-ink-700)]">Бараа</th>
-                  <th className="text-left px-4 py-3 font-medium text-[var(--color-ink-700)]">Худалдан авагч</th>
-                  <th className="text-left px-4 py-3 font-medium text-[var(--color-ink-700)]">Төлбөр</th>
-                  <th className="text-right px-4 py-3 font-medium text-[var(--color-ink-700)]">Дүн</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sales.map((sale) => (
-                  <tr key={sale.id} className="border-b border-[var(--color-ink-100)] last:border-0 hover:bg-[var(--color-ink-50)]/50">
-                    <td className="px-4 py-3 font-mono text-xs text-[var(--color-ink-700)]">{sale.transactionNumber}</td>
-                    <td className="px-4 py-3 text-[var(--color-ink-700)]">{formatDateTime(sale.createdAt)}</td>
-                    <td className="px-4 py-3 text-[var(--color-ink-700)]">
-                      {sale.items.length} төрөл ({sale.items.reduce((s, i) => s + i.quantity, 0)} нэгж)
-                    </td>
-                    <td className="px-4 py-3 text-[var(--color-ink-700)]">{sale.customerName || "—"}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant="neutral">{paymentLabels[sale.paymentMethod] || sale.paymentMethod}</Badge>
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-[var(--color-ink-900)]">
-                      {formatCurrency(sale.totalAmount)}
-                    </td>
-                  </tr>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
+                {["Огноо", "Барааны тоо", "Борлуулсан", "Дүн"].map(h => (
+                  <th key={h} className="text-left px-5 py-3 font-medium" style={{ color: "#64748b" }}>{h}</th>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
+              </tr>
+            </thead>
+            <tbody>
+              {sales.map((sale) => (
+                <tr key={sale.id} style={{ borderBottom: "1px solid #f8fafc" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#f8fafc")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+                  <td className="px-5 py-3.5" style={{ color: "#64748b" }}>{formatDateTime(sale.createdAt)}</td>
+                  <td className="px-5 py-3.5" style={{ color: "#0f172a" }}>
+                    {sale.items.reduce((s, i) => s + i.quantity, 0)} нэгж
+                  </td>
+                  <td className="px-5 py-3.5" style={{ color: "#64748b" }}>
+                    {sale.soldBy.lastName} {sale.soldBy.firstName}
+                  </td>
+                  <td className="px-5 py-3.5 font-semibold" style={{ color: "#1d4ed8" }}>
+                    {formatCurrency(sale.totalAmount)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }
