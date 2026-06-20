@@ -1,9 +1,9 @@
-import { z } from "zod";
+﻿import { z } from "zod";
 
 export const medicineSchema = z.object({
   name: z.string().min(2, "Эмийн нэр дор хаяж 2 тэмдэгт байх ёстой"),
   genericName: z.string().optional(),
-  barcode: z.string().optional(),
+  barcode: z.string().optional().transform(v => v === "" ? undefined : v),
   description: z.string().optional(),
   dosageForm: z.string().optional(),
   strength: z.string().optional(),
@@ -12,8 +12,8 @@ export const medicineSchema = z.object({
   sellingPrice: z.coerce.number().positive("Зарах үнэ эерэг тоо байх ёстой"),
   minStockLevel: z.coerce.number().int().min(0).default(10),
   requiresPrescription: z.boolean().default(false),
-  categoryId: z.string().optional(),
-  manufacturerId: z.string().optional(),
+  categoryId: z.string().optional().transform(v => v === "" ? undefined : v),
+  manufacturerId: z.string().optional().transform(v => v === "" ? undefined : v),
 });
 
 export type MedicineInput = z.infer<typeof medicineSchema>;
