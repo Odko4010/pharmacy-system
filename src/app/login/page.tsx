@@ -1,11 +1,10 @@
 "use client";
 import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Pill, Loader2, Eye, EyeOff } from "lucide-react";
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
   const [email, setEmail] = useState("");
@@ -19,14 +18,12 @@ function LoginForm() {
     setError("");
     setIsLoading(true);
     const result = await signIn("credentials", { email, password, redirect: false });
-    console.log("signIn result:", JSON.stringify(result));
     setIsLoading(false);
     if (result?.error) {
       setError("Имэйл эсвэл нууц үг буруу байна");
       return;
     }
-    router.push(callbackUrl);
-    router.refresh();
+    window.location.href = callbackUrl;
   }
 
   return (
