@@ -19,6 +19,7 @@ function LoginForm() {
     setError("");
     setIsLoading(true);
     const result = await signIn("credentials", { email, password, redirect: false });
+    console.log("signIn result:", JSON.stringify(result));
     setIsLoading(false);
     if (result?.error) {
       setError("Имэйл эсвэл нууц үг буруу байна");
