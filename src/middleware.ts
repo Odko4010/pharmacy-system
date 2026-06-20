@@ -4,9 +4,11 @@ import { getToken } from "next-auth/jwt";
 const ADMIN_ONLY_PATHS = ["/dashboard/users", "/dashboard/settings"];
 
 export async function middleware(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const token = await getToken({ 
+    req, 
+    secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET 
+  });
   const { pathname } = req.nextUrl;
-
   const isAuthPage = pathname === "/login";
   const isDashboardPage = pathname.startsWith("/dashboard");
 
