@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Modal } from "@/components/ui/Modal";
@@ -8,7 +8,6 @@ import { Input, Label, Select, Textarea } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/Toast";
 import { medicineSchema, type MedicineInput } from "@/lib/validations/medicine";
-import { BarcodeScanner } from "@/components/ui/BarcodeScanner";
 import { ScanBarcode, CheckCircle2, AlertCircle, Info } from "lucide-react";
 
 interface Category { id: string; name: string; }
@@ -19,15 +18,14 @@ interface MedicineFormModalProps {
   onClose: () => void;
   onSuccess: () => void;
   initialData?: (MedicineInput & { id: string }) | null;
-  // Барcode уншуулаад шууд нээх бол
   prefillBarcode?: string;
 }
 
 type BarcodeState =
   | { status: "idle" }
   | { status: "checking" }
-  | { status: "new"; barcode: string }         // шинэ эм — бүртгэж болно
-  | { status: "exists"; barcode: string; name: string; id: string }; // аль хэдийн бүртгэлтэй
+  | { status: "new"; barcode: string }
+  | { status: "exists"; barcode: string; name: string; id: string };
 
 export function MedicineFormModal({
   isOpen,
@@ -39,8 +37,8 @@ export function MedicineFormModal({
   const { showToast } = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
   const [manufacturers, setManufacturers] = useState<Manufacturer[]>([]);
-  const [showScanner, setShowScanner] = useState(false);
   const [barcodeState, setBarcodeState] = useState<BarcodeState>({ status: "idle" });
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -57,12 +55,8 @@ export function MedicineFormModal({
 
   const barcodeValue = watch("barcode");
 
-  // Баркодоор API-д шалгах
   const checkBarcode = useCallback(async (code: string) => {
-    if (!code.trim()) {
-      setBarcodeState({ status: "idle" });
-      return;
-    }
+    if (!code.trim()) { setBarcodeState({ status: "idle" }); return; }
     setBarcodeState({ status: "checking" });
     try {
       const res = await fetch(`/api/medicines/barcode?code=${encodeURIComponent(code)}`);
@@ -79,11 +73,11 @@ export function MedicineFormModal({
     }
   }, []);
 
-  // Барcode оруулаад 600ms хүлэх
+  // Баркод оруулаад 500ms хүлэх
   useEffect(() => {
-    if (initialData) return; // засах үед шалгахгүй
+    if (initialData) return;
     if (!barcodeValue) { setBarcodeState({ status: "idle" }); return; }
-    const t = setTimeout(() => checkBarcode(barcodeValue), 600);
+    const t = setTimeout(() => checkBarcode(barcodeValue), 500);
     return () => clearTimeout(t);
   }, [barcodeValue, checkBarcode, initialData]);
 
@@ -99,17 +93,13 @@ export function MedicineFormModal({
       if (prefillBarcode) {
         setValue("barcode", prefillBarcode);
         checkBarcode(prefillBarcode);
+      } else {
+        // POS уншигч шууд орж ирэхийн тулд баркод талбарт focus хийнэ
+        setTimeout(() => barcodeInputRef.current?.focus(), 150);
       }
     }
     setBarcodeState({ status: "idle" });
   }, [isOpen, initialData, reset, prefillBarcode, setValue, checkBarcode]);
-
-  // Камераас барcode уншсан
-  const handleScan = useCallback(async (code: string) => {
-    setShowScanner(false);
-    setValue("barcode", code, { shouldValidate: true });
-    await checkBarcode(code);
-  }, [setValue, checkBarcode]);
 
   async function onSubmit(data: MedicineInput) {
     try {
@@ -135,7 +125,6 @@ export function MedicineFormModal({
     }
   }
 
-  // Баркодын төлөвийн UI
   const renderBarcodeStatus = () => {
     if (initialData) return null;
     switch (barcodeState.status) {
@@ -157,208 +146,142 @@ export function MedicineFormModal({
         return (
           <div className="flex items-center gap-1.5 mt-1.5 text-xs text-amber-600">
             <AlertCircle className="size-3.5" />
-            &quot;{barcodeState.name}&quot; эм аль хэдийн бүртгэлтэй байна
+            &ldquo;{barcodeState.name}&rdquo; аль хэдийн бүртгэлтэй
           </div>
         );
       default:
-        return null;
+        return (
+          <p className="flex items-center gap-1 mt-1.5 text-xs text-slate-400">
+            <Info className="size-3" />
+            POS баркод уншигчаар уншуулах эсвэл гараар оруулах
+          </p>
+        );
     }
   };
 
+  // register-ийн ref-тэй нэгтгэх
+  const { ref: barcodeRegRef, ...barcodeRest } = register("barcode");
+
   return (
-    <>
-      {showScanner && (
-        <BarcodeScanner onScan={handleScan} onClose={() => setShowScanner(false)} />
-      )}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={initialData ? "Эм засах" : "Шинэ эм бүртгэх"}
+      maxWidth="lg"
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
 
-      <Modal
-        isOpen={isOpen}
-        onClose={onClose}
-        title={initialData ? "Эм засах" : "Шинэ эм бүртгэх"}
-        maxWidth="lg"
-      >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-
-          {/* ── БАРКОД (хамгийн дээр, том) ── */}
-          {!initialData && (
-            <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
-              <Label htmlFor="barcode">
-                <span className="flex items-center gap-1.5">
-                  <ScanBarcode className="size-4 text-blue-500" />
-                  Баркод
-                </span>
-              </Label>
-              <div className="flex gap-2 mt-1.5">
-                <div className="flex-1">
-                  <Input
-                    id="barcode"
-                    placeholder="Баркод уншуулах эсвэл гараар оруулах"
-                    autoComplete="off"
-                    {...register("barcode")}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowScanner(true)}
-                  title="Камераар баркод уншуулах"
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium text-white transition-colors"
-                  style={{ background: "#1d4ed8" }}
-                >
-                  <ScanBarcode className="size-4" />
-                  <span className="hidden sm:inline">Скан</span>
-                </button>
-              </div>
-              {renderBarcodeStatus()}
-              {barcodeState.status === "idle" && (
-                <p className="flex items-center gap-1 mt-1.5 text-xs text-slate-400">
-                  <Info className="size-3" />
-                  Баркодоор эм хайж, байхгүй бол шинээр бүртгэнэ
-                </p>
-              )}
+        {/* ── БАРКОД ── */}
+        {!initialData && (
+          <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+            <Label htmlFor="barcode">
+              <span className="flex items-center gap-1.5">
+                <ScanBarcode className="size-4 text-blue-500" />
+                Баркод
+              </span>
+            </Label>
+            <div className="mt-1.5">
+              <Input
+                id="barcode"
+                placeholder="Баркод уншигчаар уншуулах эсвэл гараар оруулах..."
+                autoComplete="off"
+                ref={(el) => {
+                  barcodeRegRef(el);
+                  (barcodeInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+                }}
+                {...barcodeRest}
+              />
             </div>
-          )}
+            {renderBarcodeStatus()}
+          </div>
+        )}
 
-          {/* ── ҮНДСЭН МЭДЭЭЛЭЛ ── */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
-              Үндсэн мэдээлэл
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="name" required>Эмийн нэр</Label>
-                <Input
-                  id="name"
-                  placeholder="Жнь: Парацетамол"
-                  {...register("name")}
-                  error={errors.name?.message}
-                />
-              </div>
-              <div>
-                <Label htmlFor="genericName">Олон улсын нэр (INN)</Label>
-                <Input
-                  id="genericName"
-                  placeholder="Жнь: Paracetamol"
-                  {...register("genericName")}
-                />
-              </div>
+        {/* ── ҮНДСЭН МЭДЭЭЛЭЛ ── */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
+            Үндсэн мэдээлэл
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="name" required>Эмийн нэр</Label>
+              <Input id="name" placeholder="Жнь: Парацетамол" {...register("name")} error={errors.name?.message} />
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              <div>
-                <Label htmlFor="dosageForm">Хэлбэр</Label>
-                <Input
-                  id="dosageForm"
-                  placeholder="Шахмал, шингэн..."
-                  {...register("dosageForm")}
-                />
-              </div>
-              <div>
-                <Label htmlFor="strength">Тун хэмжээ</Label>
-                <Input id="strength" placeholder="500mg" {...register("strength")} />
-              </div>
-              <div>
-                <Label htmlFor="unit" required>Нэгж</Label>
-                <Input
-                  id="unit"
-                  placeholder="ширхэг"
-                  {...register("unit")}
-                  error={errors.unit?.message}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div>
-                <Label htmlFor="categoryId">Ангилал</Label>
-                <Select id="categoryId" {...register("categoryId")}>
-                  <option value="">— Сонгох —</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="manufacturerId">Үйлдвэрлэгч</Label>
-                <Select id="manufacturerId" {...register("manufacturerId")}>
-                  <option value="">— Сонгох —</option>
-                  {manufacturers.map((m) => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </Select>
-              </div>
+            <div>
+              <Label htmlFor="genericName">Олон улсын нэр (INN)</Label>
+              <Input id="genericName" placeholder="Жнь: Paracetamol" {...register("genericName")} />
             </div>
           </div>
-
-          {/* ── ҮНЭ & НӨӨЦ ── */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
-              Үнэ & нөөц
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="purchasePrice" required>Авах үнэ (₮)</Label>
-                <Input
-                  id="purchasePrice"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  {...register("purchasePrice")}
-                  error={errors.purchasePrice?.message}
-                />
-              </div>
-              <div>
-                <Label htmlFor="sellingPrice" required>Зарах үнэ (₮)</Label>
-                <Input
-                  id="sellingPrice"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  {...register("sellingPrice")}
-                  error={errors.sellingPrice?.message}
-                />
-              </div>
-              <div>
-                <Label htmlFor="minStockLevel">Доод нөөцийн хязгаар</Label>
-                <Input
-                  id="minStockLevel"
-                  type="number"
-                  min="0"
-                  {...register("minStockLevel")}
-                />
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div>
+              <Label htmlFor="dosageForm">Хэлбэр</Label>
+              <Input id="dosageForm" placeholder="Шахмал, шингэн..." {...register("dosageForm")} />
+            </div>
+            <div>
+              <Label htmlFor="strength">Тун хэмжээ</Label>
+              <Input id="strength" placeholder="500mg" {...register("strength")} />
+            </div>
+            <div>
+              <Label htmlFor="unit" required>Нэгж</Label>
+              <Input id="unit" placeholder="ширхэг" {...register("unit")} error={errors.unit?.message} />
             </div>
           </div>
-
-          {/* ── НЭМЭЛТ ── */}
-          <div>
-            <Label htmlFor="description">Тайлбар</Label>
-            <Textarea
-              id="description"
-              placeholder="Нэмэлт мэдээлэл..."
-              {...register("description")}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <Label htmlFor="categoryId">Ангилал</Label>
+              <Select id="categoryId" {...register("categoryId")}>
+                <option value="">— Сонгох —</option>
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="manufacturerId">Үйлдвэрлэгч</Label>
+              <Select id="manufacturerId" {...register("manufacturerId")}>
+                <option value="">— Сонгох —</option>
+                {manufacturers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </Select>
+            </div>
           </div>
+        </div>
 
-          <label className="flex items-center gap-2.5 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              className="size-4 rounded accent-blue-600"
-              {...register("requiresPrescription")}
-            />
-            <span className="text-sm text-slate-700">Жорын эм (зөвхөн жороор олгох)</span>
-          </label>
-
-          {/* ── ТОВЧЛУУРУУД ── */}
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-            <Button type="button" variant="secondary" onClick={onClose}>
-              Болих
-            </Button>
-            <Button type="submit" isLoading={isSubmitting}>
-              {initialData ? "Хадгалах" : "Бүртгэх"}
-            </Button>
+        {/* ── ҮНЭ & НӨӨЦ ── */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">
+            Үнэ & нөөц
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="purchasePrice" required>Авах үнэ (₮)</Label>
+              <Input id="purchasePrice" type="number" step="0.01" min="0" {...register("purchasePrice")} error={errors.purchasePrice?.message} />
+            </div>
+            <div>
+              <Label htmlFor="sellingPrice" required>Зарах үнэ (₮)</Label>
+              <Input id="sellingPrice" type="number" step="0.01" min="0" {...register("sellingPrice")} error={errors.sellingPrice?.message} />
+            </div>
+            <div>
+              <Label htmlFor="minStockLevel">Доод нөөцийн хязгаар</Label>
+              <Input id="minStockLevel" type="number" min="0" {...register("minStockLevel")} />
+            </div>
           </div>
-        </form>
-      </Modal>
-    </>
+        </div>
+
+        {/* ── НЭМЭЛТ ── */}
+        <div>
+          <Label htmlFor="description">Тайлбар</Label>
+          <Textarea id="description" placeholder="Нэмэлт мэдээлэл..." {...register("description")} />
+        </div>
+
+        <label className="flex items-center gap-2.5 cursor-pointer select-none">
+          <input type="checkbox" className="size-4 rounded accent-blue-600" {...register("requiresPrescription")} />
+          <span className="text-sm text-slate-700">Жорын эм (зөвхөн жороор олгох)</span>
+        </label>
+
+        <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+          <Button type="button" variant="secondary" onClick={onClose}>Болих</Button>
+          <Button type="submit" isLoading={isSubmitting}>
+            {initialData ? "Хадгалах" : "Бүртгэх"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

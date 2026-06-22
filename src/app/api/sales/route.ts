@@ -11,9 +11,11 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const from = searchParams.get("from");
     const to = searchParams.get("to");
+    const search = searchParams.get("search");
 
     const sales = await prisma.saleTransaction.findMany({
       where: {
+        ...(search ? { id: { endsWith: search.toLowerCase() } } : {}),
         ...(from || to ? {
           createdAt: {
             ...(from && { gte: new Date(from) }),
@@ -21,6 +23,7 @@ export async function GET(request: NextRequest) {
           },
         } : {}),
       },
+      take: search ? 5 : undefined,
       include: {
         soldBy: { select: { firstName: true, lastName: true } },
         items: { include: { medicine: { select: { name: true, unit: true } } } },

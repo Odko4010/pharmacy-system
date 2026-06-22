@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, Search, Pencil, Trash2, Pill, ScanBarcode } from "lucide-react";
 import { MedicineFormModal } from "./Medicineformmodal";
-import { BarcodeScanner } from "@/components/ui/BarcodeScanner";
+import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 
 interface Medicine {
   id: string;
@@ -33,10 +33,11 @@ export default function MedicinesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-
-  // Баркод scanner (хайлт эсвэл шинэ эм)
-  const [showScanner, setShowScanner] = useState<"search" | "new" | null>(null);
   const [scanPrefill, setScanPrefill] = useState<string | undefined>();
+
+  // POS уншигчаар уншсан баркодыг тодруулах
+  const [highlightedBarcode, setHighlightedBarcode] = useState<string | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadMedicines = useCallback(async () => {
     setIsLoading(true);
@@ -62,19 +63,32 @@ export default function MedicinesPage() {
     }
   }
 
-  // Хайлтын scanner
-  const handleSearchScan = (code: string) => {
-    setShowScanner(null);
-    setSearch(code);
-  };
+  // POS баркод уншигч — хаана ч байсан ажиллана (modal нээлттэй үед биш)
+  const handleGlobalScan = useCallback(async (code: string) => {
+    if (isModalOpen) return;
 
-  // Шинэ эм нэмэх scanner — баркодыг форм руу дамжуулна
-  const handleNewScan = (code: string) => {
-    setShowScanner(null);
-    setScanPrefill(code);
-    setEditingMedicine(null);
-    setIsModalOpen(true);
-  };
+    // Жагсаалтаас хайна
+    const found = medicines.find((m) => m.barcode === code);
+
+    if (found) {
+      // Олдсон → тухайн мөрийг 2 секунд тодруулна
+      setHighlightedBarcode(found.id);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = setTimeout(() => setHighlightedBarcode(null), 2000);
+      // Мөн хайлтын талбарт баркодыг харуулна
+      setSearch(code);
+    } else {
+      // Олдсонгүй → шинэ эм нэмэх форм нээнэ
+      setScanPrefill(code);
+      setEditingMedicine(null);
+      setIsModalOpen(true);
+    }
+  }, [isModalOpen, medicines]);
+
+  useBarcodeScanner({
+    onScan: handleGlobalScan,
+    enabled: true,
+  });
 
   const openNewModal = () => {
     setScanPrefill(undefined);
@@ -84,13 +98,6 @@ export default function MedicinesPage() {
 
   return (
     <>
-      {showScanner === "search" && (
-        <BarcodeScanner onScan={handleSearchScan} onClose={() => setShowScanner(null)} />
-      )}
-      {showScanner === "new" && (
-        <BarcodeScanner onScan={handleNewScan} onClose={() => setShowScanner(null)} />
-      )}
-
       <div className="p-6 space-y-5" style={{ background: "#f8fafc", minHeight: "100vh" }}>
         {/* Гарчиг + хяналт */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -105,69 +112,36 @@ export default function MedicinesPage() {
 
           <div className="flex items-center gap-2 flex-wrap">
             {/* Хайлт */}
-            <div className="flex items-center gap-1">
-              <div className="relative">
-                <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 size-4"
-                  style={{ color: "#94a3b8" }}
-                />
-                <input
-                  placeholder="Эм хайх..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 pr-4 py-2 rounded-xl text-sm outline-none w-52"
-                  style={{
-                    background: "white",
-                    border: "1px solid #f1f5f9",
-                    color: "#0f172a",
-                  }}
-                />
-              </div>
-              {/* Баркодоор хайх товч */}
-              <button
-                onClick={() => setShowScanner("search")}
-                title="Баркодоор хайх"
-                className="flex items-center justify-center size-9 rounded-xl transition-colors"
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 size-4"
+                style={{ color: "#94a3b8" }}
+              />
+              <input
+                placeholder="Эм хайх..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 pr-4 py-2 rounded-xl text-sm outline-none w-52"
                 style={{
                   background: "white",
                   border: "1px solid #f1f5f9",
-                  color: "#64748b",
+                  color: "#0f172a",
                 }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#eff6ff";
-                  e.currentTarget.style.color = "#1d4ed8";
-                  e.currentTarget.style.borderColor = "#bfdbfe";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "white";
-                  e.currentTarget.style.color = "#64748b";
-                  e.currentTarget.style.borderColor = "#f1f5f9";
-                }}
-              >
-                <ScanBarcode className="size-4" />
-              </button>
+              />
             </div>
 
-            {/* Шинэ эм — баркод уншаад нэмэх */}
-            <button
-              onClick={() => setShowScanner("new")}
-              title="Баркод уншуулаад шинэ эм нэмэх"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors"
+            {/* POS баркод мэдээлэл */}
+            <div
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs"
               style={{
-                background: "#eff6ff",
-                color: "#1d4ed8",
-                border: "1px solid #bfdbfe",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#dbeafe";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "#eff6ff";
+                background: "#f0fdf4",
+                border: "1px solid #bbf7d0",
+                color: "#15803d",
               }}
             >
-              <ScanBarcode className="size-4" />
-              Скан & нэмэх
-            </button>
+              <ScanBarcode className="size-3.5" />
+              Баркод уншигч бэлэн
+            </div>
 
             <button
               onClick={openNewModal}
@@ -188,11 +162,7 @@ export default function MedicinesPage() {
           {isLoading ? (
             <div className="p-8 space-y-3">
               {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className="h-12 rounded-xl animate-pulse"
-                  style={{ background: "#f1f5f9" }}
-                />
+                <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: "#f1f5f9" }} />
               ))}
             </div>
           ) : medicines.length === 0 ? (
@@ -207,7 +177,7 @@ export default function MedicinesPage() {
                 {search ? "Хайлтад тохирох эм олдсонгүй" : "Эм бүртгэгдээгүй байна"}
               </p>
               <p className="text-sm mt-1 mb-5" style={{ color: "#94a3b8" }}>
-                Анхны эмээ бүртгэнэ үү
+                Анхны эмээ бүртгэнэ үү — баркод уншигчаар ч нэмж болно
               </p>
               {!search && (
                 <button
@@ -223,35 +193,36 @@ export default function MedicinesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: "1px solid #f1f5f9", background: "#f8fafc" }}>
-                  {["Эмийн нэр", "Баркод", "Ангилал", "Зарах үнэ", "Нөөц", "Төлөв", ""].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        className="text-left px-5 py-3 font-medium"
-                        style={{ color: "#64748b" }}
-                      >
-                        {h}
-                      </th>
-                    )
-                  )}
+                  {["Эмийн нэр", "Баркод", "Ангилал", "Зарах үнэ", "Нөөц", "Төлөв", ""].map((h) => (
+                    <th key={h} className="text-left px-5 py-3 font-medium" style={{ color: "#64748b" }}>
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {medicines.map((med) => {
                   const isLow = med.totalStock <= med.minStockLevel;
+                  const isHighlighted = highlightedBarcode === med.id;
+
                   return (
                     <tr
                       key={med.id}
-                      style={{ borderBottom: "1px solid #f8fafc" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.background = "transparent")
-                      }
+                      style={{
+                        borderBottom: "1px solid #f8fafc",
+                        background: isHighlighted ? "#eff6ff" : "transparent",
+                        transition: "background 0.3s",
+                        outline: isHighlighted ? "2px solid #3b82f6" : "none",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isHighlighted) e.currentTarget.style.background = "#f8fafc";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isHighlighted) e.currentTarget.style.background = "transparent";
+                      }}
                     >
                       <td className="px-5 py-3.5">
-                        <p className="font-medium" style={{ color: "#0f172a" }}>
-                          {med.name}
-                        </p>
+                        <p className="font-medium" style={{ color: "#0f172a" }}>{med.name}</p>
                         <p className="text-xs mt-0.5" style={{ color: "#94a3b8" }}>
                           {[med.strength, med.dosageForm].filter(Boolean).join(" · ") || "—"}
                         </p>
@@ -271,10 +242,7 @@ export default function MedicinesPage() {
                       <td className="px-5 py-3.5 text-sm" style={{ color: "#64748b" }}>
                         {med.category?.name || "—"}
                       </td>
-                      <td
-                        className="px-5 py-3.5 font-medium"
-                        style={{ color: "#1d4ed8" }}
-                      >
+                      <td className="px-5 py-3.5 font-medium" style={{ color: "#1d4ed8" }}>
                         {formatCurrency(med.sellingPrice)}
                       </td>
                       <td className="px-5 py-3.5" style={{ color: "#0f172a" }}>
