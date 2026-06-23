@@ -1,23 +1,23 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Pill, ShoppingCart, Receipt, Boxes,
-  Users, Tag, BarChart2, PackagePlus, RotateCcw
+  Users, Tag, BarChart2, PackagePlus, RotateCcw, Truck
 } from "lucide-react";
 import clsx from "clsx";
 
 const navGroups = [
   {
-    label: "Үндсэн",
+    label: "ҮНДСЭН",
     items: [
       { href: "/dashboard", label: "Нүүр хуудас", icon: LayoutDashboard },
       { href: "/dashboard/medicines", label: "Эмийн жагсаалт", icon: Pill },
     ],
   },
   {
-    label: "Борлуулалт",
+    label: "БОРЛУУЛАЛТ",
     items: [
       { href: "/dashboard/sales/new", label: "Борлуулалт хийх", icon: ShoppingCart },
       { href: "/dashboard/sales", label: "Борлуулалтын жагсаалт", icon: Receipt },
@@ -25,15 +25,16 @@ const navGroups = [
     ],
   },
   {
-    label: "Нөөц",
+    label: "НӨӨЦ",
     items: [
-      { href: "/dashboard/inventory/receive", label: "Нөөц орлогодох", icon: PackagePlus },
-      { href: "/dashboard/inventory", label: "Нөөцийн хяналт", icon: Boxes },
+      { href: "/dashboard/inventory", label: "Нөөц орлогодох", icon: PackagePlus },
+      { href: "/dashboard/stock", label: "Нөөцийн хяналт", icon: Boxes },
       { href: "/dashboard/orders", label: "Захиалга", icon: ShoppingCart },
+      { href: "/dashboard/suppliers", label: "Нийлүүлэгч", icon: Truck },
     ],
   },
   {
-    label: "Тайлан & Тохиргоо",
+    label: "ТАЙЛАН & ТОХИРГОО",
     items: [
       { href: "/dashboard/reports", label: "Тайлан", icon: BarChart2 },
       { href: "/dashboard/categories", label: "Ангилал", icon: Tag },
@@ -50,7 +51,6 @@ export function Sidebar({ role }: { role: "ADMIN" | "EMPLOYEE" }) {
       className="hidden md:flex md:flex-col w-60 shrink-0 min-h-screen sticky top-0"
       style={{ background: "#0f1f3d", borderRight: "1px solid rgba(255,255,255,0.06)" }}
     >
-      {/* Лого */}
       <div
         className="flex items-center gap-3 px-5 py-5"
         style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
@@ -69,7 +69,6 @@ export function Sidebar({ role }: { role: "ADMIN" | "EMPLOYEE" }) {
         </div>
       </div>
 
-      {/* Цэс */}
       <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
         {navGroups.map((group) => {
           const visibleItems = group.items.filter(item => !("adminOnly" in item && item.adminOnly && role !== "ADMIN"));
