@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { Pill, Loader2, Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -20,7 +21,7 @@ function LoginForm() {
     const result = await signIn("credentials", { email, password, redirect: false });
     setIsLoading(false);
     if (result?.error) {
-      setError("Ð˜Ð¼ÑÐ¹Ð» ÑÑÐ²ÑÐ» Ð½ÑƒÑƒÑ† Ò¯Ð³ Ð±ÑƒÑ€ÑƒÑƒ Ð±Ð°Ð¹Ð½Ð°");
+      setError("Имэйл эсвэл нууц үг буруу байна");
       return;
     }
     window.location.href = callbackUrl;
@@ -35,15 +36,15 @@ function LoginForm() {
             style={{ background: "rgba(255,255,255,0.12)" }}>
             <Pill className="size-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Ð­Ð¼Ð¡Ð°Ð½</h1>
+          <h1 className="text-2xl font-bold text-white">ЭмСан</h1>
           <p className="text-sm mt-1" style={{ color: "rgba(255,255,255,0.5)" }}>
-            Ð­Ð¼Ð¸Ð¹Ð½ ÑÐ°Ð½Ð³Ð¸Ð¹Ð½ Ð±Ò¯Ñ€Ñ‚Ð³ÑÐ»Ð¸Ð¹Ð½ ÑÐ¸ÑÑ‚ÐµÐ¼
+            Эмийн сангийн бүртгэлийн систем
           </p>
         </div>
 
         <div className="rounded-2xl p-7" style={{ background: "rgba(255,255,255,0.97)" }}>
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">Ð¢Ð°Ð²Ñ‚Ð°Ð¹ Ð¼Ð¾Ñ€Ð¸Ð»Ð½Ð¾ ÑƒÑƒ</h2>
-          <p className="text-sm text-gray-500 mb-6">Ð¡Ð¸ÑÑ‚ÐµÐ¼Ð´ Ð½ÑÐ²Ñ‚Ñ€ÑÑ…Ð¸Ð¹Ð½ Ñ‚ÑƒÐ»Ð´ Ð¼ÑÐ´ÑÑÐ»Ð»ÑÑ Ð¾Ñ€ÑƒÑƒÐ»Ð½Ð° ÑƒÑƒ</p>
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">Тавтай морилно уу</h2>
+          <p className="text-sm text-gray-500 mb-6">Системд нэвтрэхийн тулд мэдээллээ оруулна уу</p>
 
           {error && (
             <div className="mb-4 px-4 py-3 rounded-lg text-sm"
@@ -55,7 +56,7 @@ function LoginForm() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Ð˜Ð¼ÑÐ¹Ð» Ñ…Ð°ÑÐ³ <span className="text-red-500">*</span>
+                Имэйл хаяг <span className="text-red-500">*</span>
               </label>
               <input
                 type="email"
@@ -73,12 +74,12 @@ function LoginForm() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                ÐÑƒÑƒÑ† Ò¯Ð³ <span className="text-red-500">*</span>
+                Нууц үг <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -94,18 +95,24 @@ function LoginForm() {
               </div>
             </div>
 
+            <div className="text-right">
+              <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+                Нууц үг мартсан?
+              </Link>
+            </div>
+
             <button type="submit" disabled={isLoading}
               className="w-full py-2.5 rounded-lg text-white text-sm font-medium transition-all flex items-center justify-center gap-2"
               style={{ background: isLoading ? "#93c5fd" : "#1d4ed8" }}>
               {isLoading ? (
-                <><Loader2 className="size-4 animate-spin" /> ÐÑÐ²Ñ‚ÑÑ€Ñ‡ Ð±Ð°Ð¹Ð½Ð°...</>
-              ) : "ÐÑÐ²Ñ‚Ñ€ÑÑ…"}
+                <><Loader2 className="size-4 animate-spin" /> Нэвтэрч байна...</>
+              ) : "Нэвтрэх"}
             </button>
           </form>
         </div>
 
         <p className="text-center text-xs mt-6" style={{ color: "rgba(255,255,255,0.35)" }}>
-          ÐÑÐ²Ñ‚Ñ€ÑÑ… ÑÑ€Ñ…Ð¸Ð¹Ð½ Ñ‚Ð°Ð»Ð°Ð°Ñ€ Ð°ÑÑƒÑƒÐ´Ð°Ð» Ð³Ð°Ñ€ÑÐ°Ð½ Ñ‚Ð¾Ñ…Ð¸Ð¾Ð»Ð´Ð¾Ð»Ð´ ÑÐ¸ÑÑ‚ÐµÐ¼Ð¸Ð¹Ð½ Ð°Ð´Ð¼Ð¸Ð½Ñ‚Ð°Ð¹ Ñ…Ð¾Ð»Ð±Ð¾Ð³Ð´Ð¾Ð½Ð¾ ÑƒÑƒ
+          Нэвтрэх эрхийн талаар асуудал гарсан тохиолдолд системийн админтай холбогдоно уу
         </p>
       </div>
     </div>
@@ -124,4 +131,3 @@ export default function LoginPage() {
     </Suspense>
   );
 }
-
