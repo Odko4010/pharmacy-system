@@ -19,7 +19,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
           Нууц үг сэргээх
         </a>
         <p style="color: #666; font-size: 14px;">Энэ холбоос 1 цагийн дараа хүчингүй болно.</p>
-        <p style="color: #666; font-size: 14px;">Хэрэв та энэ хүсэлт илгээгээгүй бол санаа зовох хэрэггүй — таны бүртгэлд ямар нэгэн өөрчлөлт орохгүй.</p>
+        <p style="color: #666; font-size: 14px;">Хэрэв та энэ хүсэлт илгээгээгүй бол энэ имэйлийг үл тоомсорлоно уу.</p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
         <p style="color: #999; font-size: 12px;">ЭмСан — Эмийн сангийн систем</p>
       </div>
