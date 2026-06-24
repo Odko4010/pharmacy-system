@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
+import { UserCircle, usePathname } from "next/navigation";
+import { UserCircle,
   LayoutDashboard, Pill, ShoppingCart, Receipt, Boxes,
   Users, Tag, BarChart2, PackagePlus, RotateCcw, Truck
 } from "lucide-react";
@@ -39,6 +39,7 @@ const navGroups = [
       { href: "/dashboard/reports", label: "Тайлан", icon: BarChart2 },
       { href: "/dashboard/categories", label: "Ангилал", icon: Tag },
       { href: "/dashboard/users", label: "Хэрэглэгчид", icon: Users, adminOnly: true },
+      { href: "/dashboard/profile", label: "Миний мэдээлэл", icon: UserCircle },
     ],
   },
 ];
