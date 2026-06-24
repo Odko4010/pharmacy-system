@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 const ADMIN_ONLY_PATHS = ["/dashboard/users", "/dashboard/settings"];

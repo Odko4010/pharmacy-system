@@ -7,21 +7,28 @@ datasource db {
   provider = "postgresql"
 }
 
-
 model User {
-  id               String           @id @default(cuid())
-  email            String           @unique
+  id               String            @id @default(cuid())
+  email            String            @unique
   password         String
   firstName        String
   lastName         String
   phone            String?
-  role             Role             @default(EMPLOYEE)
-  isActive         Boolean          @default(true)
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  role             Role              @default(EMPLOYEE)
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   sales            SaleTransaction[]
   stockMovements   StockMovement[]
   ordersCreated    Order[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }
 
 model Category {
@@ -58,7 +65,7 @@ model Medicine {
   description          String?
   dosageForm           String?
   strength             String?
-  unit                 String          @default("??????")
+  unit                 String          @default("ширхэг")
   purchasePrice        Decimal
   sellingPrice         Decimal
   minStockLevel        Int             @default(10)
@@ -137,15 +144,15 @@ model OrderItem {
 }
 
 model StockMovement {
-  id         String        @id @default(cuid())
+  id         String       @id @default(cuid())
   medicineId String
-  medicine   Medicine      @relation(fields: [medicineId], references: [id])
+  medicine   Medicine     @relation(fields: [medicineId], references: [id])
   type       MovementType
   quantity   Int
   reason     String?
   movedById  String
-  movedBy    User          @relation(fields: [movedById], references: [id])
-  createdAt  DateTime      @default(now())
+  movedBy    User         @relation(fields: [movedById], references: [id])
+  createdAt  DateTime     @default(now())
 }
 
 enum Role {
@@ -165,4 +172,3 @@ enum MovementType {
   OUT
   ADJUSTMENT
 }
-
