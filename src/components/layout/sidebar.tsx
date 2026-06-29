@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { UserCircle, usePathname } from "next/navigation";
-import { UserCircle,
+import { usePathname } from "next/navigation";
+import {
   LayoutDashboard, Pill, ShoppingCart, Receipt, Boxes,
-  Users, Tag, BarChart2, PackagePlus, RotateCcw, Truck
+  Users, Tag, BarChart2, PackagePlus, RotateCcw, Truck, UserCircle
 } from "lucide-react";
 import clsx from "clsx";
 
